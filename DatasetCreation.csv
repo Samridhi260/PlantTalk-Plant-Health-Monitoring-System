@@ -1,0 +1,45 @@
+import pandas as pd
+
+# Load the dataset
+df = pd.read_csv("tomato irrigation dataset - Copy.csv")
+
+# Label the moods
+def label_mood(row):
+    mood_conditions = []
+
+    if row['Soil moisture'] < 350:
+        mood_conditions.append("Thirsty")
+    if row['Temperature '] > 35:
+        mood_conditions.append("Overheated")
+    if row['Solar Radiation'] < 200:
+        mood_conditions.append("Too Dark")
+
+    if len(mood_conditions) == 0:
+        return "Happy"
+    elif len(mood_conditions) == 1:
+        return mood_conditions[0]
+    else:
+        return "Stressed"
+
+df['Plant Mood'] = df.apply(label_mood, axis=1)
+
+# Group by mood
+mood_groups = df.groupby('Plant Mood')
+
+# Determine minimum group size for balanced interleaving
+min_size = mood_groups.size().min()
+
+# Interleave rows from each group up to min size
+interleaved_parts = [group.iloc[:min_size] for _, group in mood_groups]
+interleaved_df = pd.concat(interleaved_parts).sort_index(kind='merge')
+
+# Optional: Add leftover (imbalanced) rows, shuffled
+remaining_parts = [group.iloc[min_size:] for _, group in mood_groups]
+remaining_df = pd.concat(remaining_parts).sample(frac=1, random_state=42)
+
+# Combine and shuffle final dataset
+final_df = pd.concat([interleaved_df, remaining_df]).sample(frac=1, random_state=99).reset_index(drop=True)
+
+# Save to CSV
+final_df.to_csv("tomato_with_mood_interleaved.csv", index=False)
+print("Moods interleaved and saved as: tomato_with_mood_interleaved.csv")
